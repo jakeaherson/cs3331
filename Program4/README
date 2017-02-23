@@ -1,0 +1,72 @@
+README Program 4
+
+Logic:
+
+Use three semaphores.  One for the the feeding pots, 
+one for the mother eagle and one for the waiting.
+The semaphore used on mother eagle is a binary semaphore.
+The semaphore used on the feeding pots is a counting semaphore.
+The semaphore used on the number of waiting eagles is a counting semaphore.
+We created one thread for the mother 
+eagle and one thread for each baby eagle.
+The mother eagle thread does the following:
+sleep until baby eagle wakes her
+fills pots
+and goes back to sleep
+This repeats for the number for feedings specified in the input argument.
+
+The baby eagle threads does the following:
+
+get ready to eat
+eat from a full feeding pot
+finish eating
+play after eating
+This sequences of actions will repeat 
+based on how many times the feeding pots get filled.
+
+
+One baby eagle will wakeup the mother eagle when the baby 
+eagle is hungry and the mother change from sleeping
+to filling the empty pots.  For the ready to eat phase, 
+a mutex lock is placed just before the check of the conditionals.
+The baby eagle has 4 conditions to check before getting fed.
+If the mother is not retired and the pots are full then the baby eagle may eat, 
+the counting semaphore of pots is decremented and the mutex is unlocked.
+If the mother is not retired and not already awoken 
+and the pots are empty then the baby is placed on a wait, the waiting
+semaphores is incrememted and the mutex is unlocked.  
+If the mother is not already woken then the mother semaphore is incremented
+and the baby eagle is placed on wait just like the above.
+If the mother is retired and the pots are empty, 
+then the mutex and unlock the baby eagle thread is to exit.
+The game will end after the limit of the number feedings have been reached and all
+the feeding pots filled from that feeding is empty.
+
+Why does my program work?
+1. This situation will not happen because the baby
+eagles can only be started if there is a full pot available.
+
+2. This situation cannot happen because the baby eagles are only 
+active when a pot is full or they wake the mama eagle to get more.
+
+3. Semaphores are used to only allow a certain number of baby eagles
+active at a time and other baby eagles need to wait.
+
+4. A semaphore is used to say only full pots can be eaten from.
+
+5. A semaphore blocks any other baby eagles from using the same one.
+
+6. Only one needs to wake the mother, once she is awake, the others
+cannot awaken her through the use of semaphores.
+
+7. The mother eagle cannot run while she is asleep.
+
+8. All the pots are empty, semaphores block babies from eating.
+
+9. Semaphores block babies until each baby has at least one pot to themselves.
+
+10. The mother is blocked from being awake while all pots are full
+so she goes to sleep until awoken again.
+
+11. Each baby eagle semaphore needs a certain amount of feedings
+before the program can terminate.

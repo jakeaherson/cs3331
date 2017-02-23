@@ -1,0 +1,164 @@
+README                                                                                                                                                                                                              
+Question 1:
+Yes there is potential for race conditions to occur. The big reason
+is we are using a "shared memory" i.e the global array B is being 
+changed by each thread as well as read. So for example say we had a
+problem with the timing and we are on Run 1 and thread 2 is created.
+We are adding X[2]+X[1], assuming X[1] in the previous thread
+was added to X[0] so now X[1] = X[0]+X[1]. If the thread timing
+is off and we recieve the value of X[1] from B before X[0] is added
+it is going to give us the wrong value and cause a race condition, 
+the rest of the array values will be incorrect as well.
+
+Question 2:
+Lets take a look at the prefix sum algorithm:
+
+y0 = X0
+Y1 = X0 + X1
+Y2 = X0 + X1 + X2
+...
+
+Lets use this on the array below.
+
+Say we have input array A
+---------------------------------
+| 7 | 1 | 3 | 2 | 8 | 4 | 5 | 9 |
+---------------------------------
+  0   1   2   3   4   5   6   7
+
+we create an output array B that is the size of Array A
+
+so currently Output Array B :
+---------------------------------
+|   |   |   |   |   |   |   |   |
+---------------------------------
+  0   1   2   3   4   5   6   7
+
+B[0] = A[0]
+B[0] = 7
+
+so we place this in the array B
+
+so currently Output Array B :
+---------------------------------
+| 7 |   |   |   |   |   |   |   |
+---------------------------------
+  0   1   2   3   4   5   6   7
+
+next, we find B[1] 
+
+This according the the algorithm is 
+B[1] = A[0] + A[1]
+B[1] = 7 + 1
+so currently Output Array B :
+---------------------------------
+| 7 | 8 |   |   |   |   |   |   |
+---------------------------------
+  0   1   2   3   4   5   6   7
+
+we continue this until we fill the array B.
+
+The Prefix Sum for this array is
+---------------------------------------
+| 7 | 8 | 11 | 13 | 21 | 25 | 30 | 39 |
+---------------------------------------
+
+Now, lets look at the gap algorithm and why it works.
+
+Say we have input array A
+---------------------------------
+| 7 | 1 | 3 | 2 | 8 | 4 | 5 | 9 |
+---------------------------------
+  0   1   2   3   4   5   6   7
+
+With the gapping algorithm based the number elements
+in this case 8. 
+We need to find n which is 2^n = 8?
+To find this we take log2(8) = 3
+
+This means we are going to have 3 runs. 
+0, 1, 2
+
+
+Run 1
+2 ^ run-1 -- in this case 0 since it's the first run to compute the gap
+So we know that the gap is "1". 
+
+Therefore first time through we copy down the first element from A into B,
+then compute B[n] A[n]+A[n+1]
+
+Output Array B looks like this: 
+
+------------------------------------
+| 7 | 8 | 4 | 5 | 10 | 12 | 9 | 14 |
+------------------------------------
+  0   1   2   3   4    5    6    7
+
+The easiest way to see this is by following one element so lets follow B[4] 
+according to the Prefix Sum
+B[4] = A[0]+A[1]+A[2]+A[3]+A[4]
+
+Using our gapping algoritm B[4] currently = A[3]+A[4]
+
+Next Run 2
+Our Gap is now 2^run-1 = 2^1 = 2
+
+Therefor we once again copy down 2 elements from A now, and add indexes 2 away 
+
+Output Array B looks like: 
+
+---------------------------------------
+| 7 | 8 | 11 | 13 | 14 | 17 | 19 | 26 |
+---------------------------------------
+  0   1   2    3    4    5    6    7
+
+Still looking at B[4] we now have from this run
+
+B[4] = A[2] + B[4] (which is equal to A[3]+A[4]) 
+i.e 
+B[4] = A[2]+ A[3] + A[4]
+
+Run 3: (Final Run)
+Our Gap is now 2^run-1 = 2^1 = 4
+
+Therefor we copy down 4 elements from A now, and add indexes 4 away 
+
+Output Array B looks like: 
+
+---------------------------------------
+| 7 | 8 | 11 | 13 | 21 | 25 | 30 | 39 |
+---------------------------------------
+  0   1   2    3    4    5    6    7
+
+Still looking at B[4] we now have from this run
+
+B[4] = A[1] + B[4] (which is equal to A[3]+A[4]+A[2]) 
+i.e
+B[4] = A[1] + A[2]+ A[3] + A[4]
+
+This is exactly the outcome of the original prefix sum algorithm
+Therefor proving our algorithm to produce the same result. 
+
+Question 3:
+No, we can't store the value of xi back into Xi, we need another
+array to store the intermediate results. The array to be used is
+a 2-dimensional one of k+1 rows and n columns, where k = log2(n):
+B[k,n]. Initially, we have the input elements stored in row 0 of
+B[0,*] (i.e., B[0,i] = xi for i = 0, 1, 2, 3, ..., n-1). Then,
+in run h, n threads T0, T1, T2, ...., Tn-1 are created so that
+thread Ti computes xi + xi - 2h-1, stores the result in B[h,i],
+and exits. In this way, the last row of B[k,*] contains the
+prefix sum results, where k = log2(n) is the number of needed runs.
+
+Question 4:
+Ignoring the repeated thread creation process, 
+we are able to use n threads, each of which 
+terates k = log2(n) times, to compute the prefix sum of n numbers. 
+If each thread is considered as a CPU, the algorithm means that we 
+are able to use n CPUs to compute the prefix sum of n numbers, 
+and each CPU only iterates k = log2(n) times (i.e., O(log2(n))). 
+This is fast because O(log2(n)) is faster than O(n). 
+For example, if we have 1024 = 210 numbers, the sequential
+algorithm requires 1024-1 = 1023 additions on a single CPU
+while the concurrent one requires 1024 CPUs each of which 
+executes only 10 = log2(1024) additions!

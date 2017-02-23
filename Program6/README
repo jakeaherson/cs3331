@@ -1,0 +1,50 @@
+CS3331
+Program 6
+Jake Herson
+
+README
+
+1 The logic of your program
+The logic of the program is that each thread waits for its neighbors (up and left) to pass it a value through their channel. It then computers the new stored value and waits for EOD or the next value.
+Upon EOD the thread passes EOD on and terminates after writing its final computer value.
+
+2 Why does your program work?
+This works because each thread requires all the values for the entire row in A and the entire column in B it is computing for (ex column 2 in B and row 3 in A for C[3][2]).
+
+3 Variable info
+    General/Class Vars
+	A_X,A_Y,B_X,B_Y - The dimensions of A and B resp.
+	dataA, dataB, output - Storage for A, B, and C resp.
+	p - A 2D array of pointers to thread processors.
+
+    ThreadProcessor
+	i,j - Index of C to compute for
+	storage - The storage variable for computing during running
+
+    Row/ColumnReaders
+	index - The index to row in A for RowReader and column in B for ColumnReader
+	
+4 Why does thread Pi,j compute the inner (or dot) product of row i of matrix A and column j of matrix B correctly?
+Each thread receives the pair of integers that compute one part of the value of C[i][j]. Since matrix multiplication is the addition of
+each element in a row + the element in the column of the other matrix then multiplying each of those together we can compute these one at a time, passing the values on to our neighbors as we go.
+
+5 Why are synchronous channels used rather than asynchronous channels? I expect a rigorous reasoning.
+If an asynchronous channel were used it could be that case that ChanA receives 2 messages before B receives any. This message could wait in the queue but this loses out on parallelism. The threads that are to the right and down from the thread that has received on A twice are stuck waiting for some event they need to happen.
+
+Thread Pi,j terminates when it receives a EOD from its top and left neighbors. Does this thread termination follow a particular pattern? Draw a diagram of this termination pattern. Note that your diagram must be readable when it is printed.
+Thread termination follows a cascading pattern starting at 0,0 then 0,1 and 1,0 through to i,0 and j,0 then the following column and row begin to terminated (row 1, column 1). Such that no thread may terminate until its neighbor directly up and its neighbor directly left have terminated. In the case of the first row and column the terminate as soon as they receive the last piece of data and pass it on with other requirments.
+Note: The parenthesis indicate the order of termination.
+ 0,0 (1)-> 1,0 (2)-> 2,0 ... (i)-> i,0
+ (0)      (j+1)		(j+2)	 (j+i)
+  v         v		  v        v
+ 0,1(i+1)-> 1,1 (i+2) -> 1,2 ... (2i)
+ (1)       .
+  v        .
+ 0,2       .
+ ...
+ (j)      (2j)
+  v	    v
+ 0,j(i+1)->1,j 
+
+Can a thread terminate once it receives a EOD from its left (or top) neighbor and still deliver correct results. Explain your answer as clear as possible.
+Yes, since for matrix multiplication to work m and u must be equal. Since they are equal when one EOD is received it is guaranteed that the next Receive on the other channel will be an EOD. As by that point m and u data values have been received from the channel. If this were not the case then it would not be possible to multiply the matrices as u!=m

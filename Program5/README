@@ -1,0 +1,136 @@
+Jake Herson
+CS3331
+12/02/2016
+Program Assignment 5
+README
+
+The Program Logic
+
+	The logic of the program is as follows:
+		m and c missionary and cannibal (resp.) threads are created.
+	Each of these threads calls the respective *Arrives functions.
+	Upon calling the function they enter the queue by incrementing
+	their associated counter and calling their Wait() on their respective
+	conditions (eg MQueue and CQueue). When each arrives they check
+	for valid boat load (3 missionary, 3 cannibal or 2 cannibal and 1
+	missionary). If this condition is detected as true then they set a flag
+	named valid_boat.
+		
+		They then wait for the boat to wake them from their queues. When they
+	are awoken they get on the boat by incrementing a counter (p_count)
+	and checking how many have gotten on already. If they detect that all
+	three riders have boarded they set the flag named boat_loaded. Then
+	wait for the boat to awaken them again (by waiting on GetOff).
+
+		When they are awoken they decrement p_count, if they see that they are
+	the last rider they reset the flags to false.
+
+Why does this work?
+
+		This method works by using the logic similar to that of the roller coaster
+	problem and utilizing the specifications of a Hoare type monitor.
+
+	The steps of:
+		Passenger: I want to get on (Wait(Queue))
+		Car: Ok, get on (Signal(Queue))
+		Passenger: Ok, I am on (Signal(Boarded))
+		Car: Ok, you are on next passenger (Wait(Boarded))
+		(loop until full)
+
+		Is achieved by the fact that Hoare monitor forces the process that calls
+	the signal is forced to sleep for some time while the process he woke does
+	some things. The loss of CPU is effectively the second set of Semaphores
+	that would be use for the roller coaster. As the boat MUST sleep when it
+	signals a passenger it is guaranteed that a passenger will receive the CPU
+	and execute next.
+	
+		This passenger then gets on the boat and waits, losing the CPU again.
+	Since all passengers are waiting, either in the queue (M/CQueue)
+	or on the boat (GetOff) they Boat will regain the CPU and either signal the
+	next passenger or exit the monitor and check if all the passengers have had
+	a chance to execute and board the boat. If they have not it checks again
+	some time in the future.
+
+Variables
+	
+	Condition Variables
+		MQueue - A queue of missionaries waiting to board the boat.
+		CQueue - A queue of cannibals waiting to board the boat.
+		GetOff - A condition used to block passengers while the boat is
+			sailing across the river. Preventing them from jumping off early.
+
+	Other Variables
+		MQueue_Count - How many missionaries are waiting.
+		CQueue_Count - How many cannibals are waiting.
+		max_crossings - The max river crossings to make
+		cur_cross - The current number of completed crossings.
+		sailing - Used to indicate whether the boat is at the shore or not.
+			Keeps processes from telling the boat that there is a valid load
+			when it is not ready to receive them.
+		p_count - The number of passengers currently on the boat.
+		valid_boat - A flag to indicate that a valid load of passengers is 
+			waiting at the shore.
+		boat_loaded - A flag to indicate that all three passengers have boarded
+			the boat and it is safe to sail across.
+		pass - An array to store the type of each passenger ( cannibal = 1,
+			missionary = 0)
+		pass2 - An array to store the id of each passenger.
+
+Every boat has exactly three persons and is safe (and the policy of attaining this)
+	
+		As mentioned above each passenger arrives and waits for the boat to 
+	awaken them. The boat does the determination of who gets to ride. In this
+	way it can be guaranteed that each passenger must wait for the boat tell
+	him to get on.
+
+		The boat checks the currently waiting passengers and chooses a set of
+	them to board. Arbitrarily it gives priority in this order: 3 missionaries,
+	3 cannibals, 2 missionaries and 1 cannibal. For a fourth passenger to board
+	it would need to be the case that a fourth signal() would need to be made
+	to either queue. The boat cannot do this as it must see that valid_boat is
+	set, for this to be set sailing must be 0. And sailing is only reset after
+	the boat has arrived at the shore and let all passengers off.
+
+		To guarantee that every boat is safe is as above. The boat doesn't care
+	how many of either passenger is waiting, how long they've been there, or 
+	what type they are. It either lets three missionaries on (if there are three),
+	three cannibals on (if there are three) or two missionaries and one cannibal.
+	For the boat to be letting passengers on and none of those three cases to be
+	true is impossible as the passengers check if there are enough of them to
+	form the boat load when they arrive. If there is a not valid boat they simply
+	wait in the queue, if there is a valid boat they modify the flag and then
+	enter the queue.
+	
+	
+All specified functions work correctly and why
+
+	No one can get off early.
+		The condition GetOff guarantees this. The passengers check if they are
+	the third to board the boat. If they are they tell the boat to sail. The 
+	boat then enters the monitor and signals GetOff three times. Since the
+	monitor is a Hoare monitor it loses the CPU each time. The passengers then
+	get off and get back in the queue eventually. For them to get off early
+	the flag boat_loaded would need to be true as this is the only time
+	the boat can call BoatDone(). For the boat_loaded flag to be true early
+	a passenger would need to somehow modify p_count externally, as this is a
+	monitor variable that is absurd, only one passenger can modify it a time
+	and it is only ever incremented by 1.
+
+	No one can off/on while sailing.
+		Similar to above. For a passenger to get off or on while sailing
+	it would mean that one of the sets of conditions were signalled (queue or 
+	getoff). For this to happen the boat would need to signal GetOff and continue
+	executing, this is absurd because the monitor is of type Hoare. To continue
+	executing after signalling violates mutual exclusion.
+
+	Everyone registered to get on.
+		This is achieved by the Queues. No passenger may edit the passenger list
+	(pass and pass2) with out the boat telling them they may board it by 
+	signalling their queue.
+
+	No one may board again before the crossing completes.
+		When a passenger is let off they loop around and reenter the queue.
+	To get back on the boat before it has returned to the shore someone would
+	need to signal their queue externally, and this is absurd as that violates
+	the properties of the monitor. Only the function BoatReady() calls this 
+	signal and only the BoatThread calls BoatReady() 
